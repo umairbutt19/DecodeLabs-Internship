@@ -1,0 +1,138 @@
+{
+  "name": "AI Recommendation Logic System",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "responseNodes"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "100f7a4c-26b5-42d7-8c2a-0c9acedfbc3f",
+      "name": "When chat message received",
+      "webhookId": "860b2ad7-d0c6-4bd4-8516-2bf21d523849"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const message = ($json.chatInput || \"\").toLowerCase();\n\nconst availablePreferences = [\n  \"action\",\n  \"comedy\",\n  \"drama\",\n  \"sci-fi\",\n  \"science fiction\",\n  \"romance\",\n  \"thriller\",\n  \"adventure\",\n  \"animation\",\n  \"fantasy\"\n];\n\nconst preferences = [];\n\nfor (const preference of availablePreferences) {\n  if (message.includes(preference)) {\n    if (preference === \"science fiction\") {\n      if (!preferences.includes(\"sci-fi\")) {\n        preferences.push(\"sci-fi\");\n      }\n    } else {\n      preferences.push(preference);\n    }\n  }\n}\n\nreturn {\n  userInput: message,\n  preferences: preferences\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "4cf19a5e-4b4d-4efd-b612-87fbf355b88b",
+      "name": "Extract Preferences"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const recommendations = $json.recommendations || [];\n\nconst sortedRecommendations = recommendations\n  .filter(item => item.score > 0)\n  .sort((a, b) => b.score - a.score);\n\nconst topRecommendations = sortedRecommendations.slice(0, 3);\n\nreturn {\n  userInput: $json.userInput,\n  preferences: $json.preferences,\n  recommendations: topRecommendations\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        0
+      ],
+      "id": "8187f8f0-0ad5-47a1-9b2b-5947d29e93b6",
+      "name": "Recommendation Engine"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const preferences = $json.preferences || [];\n\nconst movies = [\n  {\n    title: \"Interstellar\",\n    genres: [\"sci-fi\", \"drama\", \"adventure\"]\n  },\n  {\n    title: \"The Dark Knight\",\n    genres: [\"action\", \"drama\", \"thriller\"]\n  },\n  {\n    title: \"Avengers: Endgame\",\n    genres: [\"action\", \"adventure\", \"sci-fi\"]\n  },\n  {\n    title: \"The Hangover\",\n    genres: [\"comedy\"]\n  },\n  {\n    title: \"The Notebook\",\n    genres: [\"romance\", \"drama\"]\n  },\n  {\n    title: \"Inception\",\n    genres: [\"sci-fi\", \"thriller\", \"action\"]\n  },\n  {\n    title: \"Toy Story\",\n    genres: [\"animation\", \"comedy\", \"adventure\"]\n  },\n  {\n    title: \"The Lord of the Rings\",\n    genres: [\"fantasy\", \"adventure\", \"drama\"]\n  },\n  {\n    title: \"Joker\",\n    genres: [\"drama\", \"thriller\"]\n  },\n  {\n    title: \"Spider-Man\",\n    genres: [\"action\", \"adventure\", \"sci-fi\"]\n  }\n];\n\nconst recommendations = movies.map(movie => {\n  const matchedPreferences = movie.genres.filter(genre =>\n    preferences.includes(genre)\n  );\n\n  const score = matchedPreferences.length;\n\n  return {\n    title: movie.title,\n    genres: movie.genres,\n    matchedPreferences,\n    score\n  };\n});\n\nreturn {\n  userInput: $json.userInput,\n  preferences,\n  recommendations\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ],
+      "id": "770579d3-40fb-45cb-888f-9d4ddbdf916f",
+      "name": "Preference Matching Engine"
+    },
+    {
+      "parameters": {
+        "message": "={{\n(() => {\n  const recommendations = $json.recommendations || [];\n  const preferences = $json.preferences || [];\n\n  if (preferences.length === 0) {\n    return \"I couldn't identify any supported preferences. Try action, comedy, drama, sci-fi, romance, thriller, adventure, animation, or fantasy.\";\n  }\n\n  if (recommendations.length === 0) {\n    return `You selected: ${preferences.join(\", \")}.\\n\\nI couldn't find a matching recommendation.`;\n  }\n\n  let response = `Based on your preferences (${preferences.join(\", \")}), here are your top recommendations:\\n\\n`;\n\n  recommendations.forEach((movie, index) => {\n    response += `${index + 1}. ${movie.title}\\n`;\n    response += `Genres: ${movie.genres.join(\", \")}\\n`;\n    response += `Matched preferences: ${movie.matchedPreferences.join(\", \")}\\n`;\n    response += `Match score: ${movie.score}\\n\\n`;\n  });\n\n  return response;\n})()\n}}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1.3,
+      "position": [
+        928,
+        0
+      ],
+      "id": "44065dca-ef3a-43fd-94f5-2af0f3a8ae44",
+      "name": "Chat",
+      "webhookId": "9f7f155e-8bf1-4298-bb04-f9d0625bc700"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Extract Preferences",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Preferences": {
+      "main": [
+        [
+          {
+            "node": "Preference Matching Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recommendation Engine": {
+      "main": [
+        [
+          {
+            "node": "Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preference Matching Engine": {
+      "main": [
+        [
+          {
+            "node": "Recommendation Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "6e341199-fe4b-4663-8426-08e9a9b87fc8",
+  "meta": {
+    "instanceId": "dd8f6d01d2242a2dfff4871bcce3d36ccebbe96fb0a120881e00720858894466"
+  },
+  "nodeGroups": [],
+  "id": "QpRmlop3vzY39pMl",
+  "tags": []
+}
